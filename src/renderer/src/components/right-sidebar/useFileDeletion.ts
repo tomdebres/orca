@@ -268,10 +268,13 @@ export function useFileDeletion({
           needsConfirmation: roots.some(isRemoteDeletion),
           confirmBatch: () =>
             confirm({
+              // Why: count the full selection, not the filtered roots —
+              // deleting a folder still deletes the selected children inside
+              // it, and the prompt should match what the user sees selected.
               title: translate(
                 'auto.components.right.sidebar.useFileDeletion.af1270b90d',
                 'Permanently delete {{count}} items?',
-                { count: roots.length }
+                { count: nodes.length }
               ),
               description: translate(
                 'auto.components.right.sidebar.useFileDeletion.dd029aa5cd',
