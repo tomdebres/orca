@@ -39,11 +39,13 @@ type UseFileDeletionResult = {
   requestDeleteAll: (nodes: TreeNode[]) => void
 }
 
-// Why: mirrors runDelete's remote check (non-local owner) so the batch prompt
-// fires whenever any selected root is remote, matching the per-node behaviour.
-function isRemoteDeletion(node: TreeNode): boolean {
+// Why: gate the batch prompt on the same condition runDelete uses to actually
+// show its per-node confirm — a non-local owner with a resolvable route.
+// Unresolved owners throw before prompting, so a batch of them must not pop a
+// destructive dialog for deletes that provably cannot proceed.
+function needsRemoteDeleteConfirmation(node: TreeNode): boolean {
   const operationOwner = node.operationOwner ?? { kind: 'unresolved' as const }
-  return operationOwner.kind !== 'local'
+  return operationOwner.kind !== 'local' && getFileExplorerOperationRoute(operationOwner) !== null
 }
 
 export function useFileDeletion({
@@ -265,7 +267,7 @@ export function useFileDeletion({
           roots,
           // Why: only remote deletes confirm at all — local deletes go to the
           // OS Trash and stay prompt-free in batches too.
-          needsConfirmation: roots.some(isRemoteDeletion),
+          needsConfirmation: roots.some(needsRemoteDeleteConfirmation),
           confirmBatch: () =>
             confirm({
               // Why: count the full selection, not the filtered roots —
