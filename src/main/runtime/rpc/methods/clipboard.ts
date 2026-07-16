@@ -19,6 +19,7 @@ const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/
 type ClipboardImageUpload = {
   expectedBase64Length: number
   connectionId?: string | null
+  fileName?: string | null
   content: ClipboardImageUploadBuffer
   reservedBase64Length: number
   expiresAt: number
@@ -120,12 +121,16 @@ function clipboardImageBase64Payload(maxChars: number, tooLargeMessage: string) 
   })
 }
 
+// Why: despite the "image" method names (kept for compatibility), these are the
+// generic blob-to-temp-file channel; fileName support is advertised via the
+// clipboard.file-upload.v1 capability, and the host sanitizes the name.
 const SaveImageAsTempFile = z.object({
   contentBase64: clipboardImageBase64Payload(
     MAX_CLIPBOARD_IMAGE_BASE64_CHARS,
     CLIPBOARD_IMAGE_TOO_LARGE_ERROR
   ),
-  connectionId: z.string().min(1).nullable().optional()
+  connectionId: z.string().min(1).nullable().optional(),
+  fileName: z.string().min(1).nullable().optional()
 })
 
 const StartImageUpload = z.object({
@@ -134,7 +139,8 @@ const StartImageUpload = z.object({
     .int()
     .nonnegative()
     .max(MAX_CLIPBOARD_IMAGE_BASE64_CHARS, CLIPBOARD_IMAGE_TOO_LARGE_ERROR),
-  connectionId: z.string().min(1).nullable().optional()
+  connectionId: z.string().min(1).nullable().optional(),
+  fileName: z.string().min(1).nullable().optional()
 })
 
 const AppendImageUploadChunk = z.object({
@@ -160,7 +166,8 @@ export const CLIPBOARD_METHODS: RpcMethod[] = [
     params: SaveImageAsTempFile,
     handler: async (params) =>
       saveClipboardImageBufferAsTempFile(Buffer.from(params.contentBase64, 'base64'), {
-        connectionId: params.connectionId
+        connectionId: params.connectionId,
+        fileName: params.fileName
       })
   }),
   defineMethod({
@@ -175,6 +182,7 @@ export const CLIPBOARD_METHODS: RpcMethod[] = [
       clipboardImageUploads.set(uploadId, {
         expectedBase64Length: params.expectedBase64Length,
         connectionId: params.connectionId,
+        fileName: params.fileName,
         content: new ClipboardImageUploadBuffer(
           params.expectedBase64Length,
           CLIPBOARD_IMAGE_UPLOAD_CHUNK_BASE64_CHARS
@@ -227,7 +235,8 @@ export const CLIPBOARD_METHODS: RpcMethod[] = [
         const content = upload.content.decode()
         upload.content.clear()
         return await saveClipboardImageBufferAsTempFile(content, {
-          connectionId: upload.connectionId
+          connectionId: upload.connectionId,
+          fileName: upload.fileName
         })
       } finally {
         finishUpload(params.uploadId, upload)
