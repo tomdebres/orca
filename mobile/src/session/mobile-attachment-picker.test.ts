@@ -12,7 +12,7 @@ vi.mock('expo-file-system', () => ({
   File: vi.fn()
 }))
 
-import { ImageLibraryPermissionError, pickMobileImage } from './mobile-image-source-picker'
+import { ImageLibraryPermissionError, pickMobileAttachment } from './mobile-attachment-picker'
 
 const granted = { granted: true } as Awaited<
   ReturnType<typeof import('expo-image-picker').requestMediaLibraryPermissionsAsync>
@@ -39,7 +39,7 @@ function fileFactory(
   return { close, createFile, open, readBytes }
 }
 
-describe('pickMobileImage', () => {
+describe('pickMobileAttachment', () => {
   it('returns base64 from the photo library', async () => {
     const bytes = new Uint8Array([0, 1, 2, 3])
     const file = fileFactory([bytes])
@@ -47,7 +47,7 @@ describe('pickMobileImage', () => {
       canceled: false,
       assets: [{ uri: 'file:///x.jpg', fileSize: bytes.length }]
     })
-    const result = await pickMobileImage('library', {
+    const result = await pickMobileAttachment('library', {
       requestLibraryPermission: vi.fn().mockResolvedValue(granted),
       launchLibrary,
       createFile: file.createFile
@@ -62,7 +62,7 @@ describe('pickMobileImage', () => {
 
   it('throws when photo library permission is denied', async () => {
     await expect(
-      pickMobileImage('library', {
+      pickMobileAttachment('library', {
         requestLibraryPermission: vi.fn().mockResolvedValue(denied),
         launchLibrary: vi.fn()
       })
@@ -70,7 +70,7 @@ describe('pickMobileImage', () => {
   })
 
   it('returns null when the library picker is cancelled', async () => {
-    const result = await pickMobileImage('library', {
+    const result = await pickMobileAttachment('library', {
       requestLibraryPermission: vi.fn().mockResolvedValue(granted),
       launchLibrary: vi.fn().mockResolvedValue({ canceled: true, assets: null })
     })
@@ -78,28 +78,76 @@ describe('pickMobileImage', () => {
     expect(result).toBeNull()
   })
 
-  it('reads a picked file URI into base64 for the files source', async () => {
+  it('reads a picked file URI into base64 and keeps its name for the files source', async () => {
     const bytes = new Uint8Array([1, 2, 3, 4])
     const file = fileFactory([bytes])
     const launchFiles = vi.fn().mockResolvedValue({
       canceled: false,
-      assets: [{ uri: 'file:///doc.png', size: bytes.length }]
+      assets: [{ uri: 'file:///doc.png', name: 'doc.png', size: bytes.length }]
     })
 
-    const result = await pickMobileImage('files', {
+    const result = await pickMobileAttachment('files', {
       launchFiles,
       createFile: file.createFile
     })
 
-    expect(result).toEqual({ base64: Buffer.from(bytes).toString('base64') })
-    expect(launchFiles).toHaveBeenCalledWith(
-      expect.objectContaining({ copyToCacheDirectory: true })
-    )
+    expect(result).toEqual({ base64: Buffer.from(bytes).toString('base64'), fileName: 'doc.png' })
+    expect(launchFiles).toHaveBeenCalledWith(expect.objectContaining({ copyToCacheDirectory: true }))
     expect(file.close).toHaveBeenCalledTimes(1)
   })
 
+  it('omits fileName when the document picker supplies no name', async () => {
+    const bytes = new Uint8Array([1, 2])
+    const file = fileFactory([bytes])
+
+    const result = await pickMobileAttachment('files', {
+      launchFiles: vi.fn().mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file:///doc.png', size: bytes.length }]
+      }),
+      createFile: file.createFile
+    })
+
+    expect(result).toEqual({ base64: Buffer.from(bytes).toString('base64') })
+  })
+
+  it('keeps the image-only filter by default so old hosts never see non-images', async () => {
+    const launchFiles = vi.fn().mockResolvedValue({ canceled: true, assets: null })
+
+    await pickMobileAttachment('files', { launchFiles })
+
+    expect(launchFiles).toHaveBeenCalledWith(expect.objectContaining({ type: 'image/*' }))
+  })
+
+  it('opens the unfiltered picker when any-file attachments are allowed', async () => {
+    const launchFiles = vi.fn().mockResolvedValue({ canceled: true, assets: null })
+
+    await pickMobileAttachment('files', { launchFiles }, { allowAnyFile: true })
+
+    expect(launchFiles).toHaveBeenCalledWith(expect.objectContaining({ type: '*/*' }))
+  })
+
+  it('never returns a fileName for photo-library picks', async () => {
+    const bytes = new Uint8Array([9, 9])
+    const file = fileFactory([bytes])
+    const result = await pickMobileAttachment(
+      'library',
+      {
+        requestLibraryPermission: vi.fn().mockResolvedValue(granted),
+        launchLibrary: vi.fn().mockResolvedValue({
+          canceled: false,
+          assets: [{ uri: 'file:///x.jpg', fileName: 'x.jpg', fileSize: bytes.length }]
+        }),
+        createFile: file.createFile
+      },
+      { allowAnyFile: true }
+    )
+
+    expect(result).toEqual({ base64: Buffer.from(bytes).toString('base64') })
+  })
+
   it('returns null when the files picker is cancelled', async () => {
-    const result = await pickMobileImage('files', {
+    const result = await pickMobileAttachment('files', {
       launchFiles: vi.fn().mockResolvedValue({ canceled: true, assets: null })
     })
 
@@ -109,7 +157,7 @@ describe('pickMobileImage', () => {
   it('rejects a declared oversized asset before opening it', async () => {
     const file = fileFactory([], { fileSize: 1 })
     await expect(
-      pickMobileImage('files', {
+      pickMobileAttachment('files', {
         launchFiles: vi.fn().mockResolvedValue({
           canceled: false,
           assets: [{ uri: 'file:///huge.png', size: CLIPBOARD_IMAGE_MAX_SOURCE_BYTES + 1 }]
@@ -130,7 +178,7 @@ describe('pickMobileImage', () => {
     }))
 
     await expect(
-      pickMobileImage('library', {
+      pickMobileAttachment('library', {
         requestLibraryPermission: vi.fn().mockResolvedValue(granted),
         launchLibrary: vi.fn().mockResolvedValue({
           canceled: false,
@@ -146,7 +194,7 @@ describe('pickMobileImage', () => {
   it('closes the file handle when a read fails', async () => {
     const file = fileFactory([], { fileSize: 4, readError: new Error('read failed') })
     await expect(
-      pickMobileImage('files', {
+      pickMobileAttachment('files', {
         launchFiles: vi.fn().mockResolvedValue({
           canceled: false,
           assets: [{ uri: 'file:///broken.png', size: 4 }]
@@ -160,7 +208,7 @@ describe('pickMobileImage', () => {
   it('preserves bytes across chunk boundaries that are not base64 aligned', async () => {
     const chunks = [new Uint8Array([1]), new Uint8Array([2, 3]), new Uint8Array([4, 5])]
     const file = fileFactory([...chunks], { fileSize: 5, handleSize: 5 })
-    const result = await pickMobileImage('files', {
+    const result = await pickMobileAttachment('files', {
       launchFiles: vi.fn().mockResolvedValue({
         canceled: false,
         assets: [{ uri: 'file:///chunked.png', size: 5 }]
