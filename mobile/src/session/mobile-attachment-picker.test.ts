@@ -111,6 +111,20 @@ describe('pickMobileAttachment', () => {
     expect(result).toEqual({ base64: Buffer.from(bytes).toString('base64') })
   })
 
+  it('fails fast on an oversized document pick without reading it into memory', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const launchFiles = vi.fn().mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///big.zip', name: 'big.zip', size: 999 * 1024 * 1024 }]
+    })
+
+    await expect(
+      pickMobileAttachment('files', { launchFiles }, { allowAnyFile: true })
+    ).rejects.toThrow('too large')
+    expect(fetchSpy).not.toHaveBeenCalled()
+    fetchSpy.mockRestore()
+  })
+
   it('keeps the image-only filter by default so old hosts never see non-images', async () => {
     const launchFiles = vi.fn().mockResolvedValue({ canceled: true, assets: null })
 
