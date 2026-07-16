@@ -168,6 +168,35 @@ describe('pickMobileAttachment', () => {
     expect(result).toBeNull()
   })
 
+  it('fires onWillReadFile before the base64 read', async () => {
+    const events: string[] = []
+    const close = vi.fn()
+    const chunks = [new Uint8Array([9])]
+    const readBytes = vi.fn(() => {
+      events.push('read')
+      return chunks.shift() ?? new Uint8Array()
+    })
+    const createFile = vi.fn(() => ({
+      size: 1,
+      open: () => ({ size: 1, readBytes, close })
+    }))
+
+    await pickMobileAttachment(
+      'files',
+      {
+        launchFiles: vi.fn().mockResolvedValue({
+          canceled: false,
+          assets: [{ uri: 'file:///doc.pdf', name: 'doc.pdf', size: 1 }]
+        }),
+        createFile
+      },
+      { allowAnyFile: true, onWillReadFile: () => events.push('will-read') }
+    )
+
+    expect(events[0]).toBe('will-read')
+    expect(events).toContain('read')
+  })
+
   it('rejects a declared oversized asset before opening it', async () => {
     const file = fileFactory([], { fileSize: 1 })
     await expect(

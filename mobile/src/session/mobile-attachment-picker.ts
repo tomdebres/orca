@@ -21,6 +21,9 @@ export type MobileAttachmentPickerOptions = {
   // Only set when the host advertises clipboard.file-upload.v1 — old hosts
   // would strip the name and save any pick as `….png`.
   readonly allowAnyFile?: boolean
+  // Fired right before the picked file is read + base64-encoded, which blocks
+  // the JS thread for seconds on large picks — lets the UI show a spinner first.
+  readonly onWillReadFile?: () => void
 }
 
 export class ImageLibraryPermissionError extends Error {
@@ -118,7 +121,8 @@ async function pickFromLibrary(
 async function pickFromFiles(
   allowAnyFile: boolean,
   launch: typeof DocumentPicker.getDocumentAsync = DocumentPicker.getDocumentAsync,
-  createFile: MobileImageFileFactory = defaultMobileImageFileFactory
+  createFile: MobileImageFileFactory = defaultMobileImageFileFactory,
+  onWillReadFile?: () => void
 ): Promise<PickedMobileAttachment | null> {
   const result = await launch({
     type: allowAnyFile ? '*/*' : 'image/*',
@@ -132,6 +136,7 @@ async function pickFromFiles(
   if (!asset?.uri) {
     return null
   }
+  onWillReadFile?.()
   const base64 = await readUriAsBase64(asset.uri, asset.size, createFile)
   if (!base64) {
     return null
@@ -152,5 +157,10 @@ export async function pickMobileAttachment(
   if (source === 'library') {
     return pickFromLibrary(deps?.requestLibraryPermission, deps?.launchLibrary, deps?.createFile)
   }
-  return pickFromFiles(options?.allowAnyFile === true, deps?.launchFiles, deps?.createFile)
+  return pickFromFiles(
+    options?.allowAnyFile === true,
+    deps?.launchFiles,
+    deps?.createFile,
+    options?.onWillReadFile
+  )
 }

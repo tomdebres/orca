@@ -3605,7 +3605,7 @@ export default function SessionScreen() {
     client,
     activeHandle,
     canSend,
-    connState,
+    connStateRef,
     canAttachAnyFile: fileAttachmentsSupported,
     deviceTokenRef,
     beforeTerminalSend: flushPendingLiveInputBeforeAttachmentSend,
