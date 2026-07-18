@@ -69,6 +69,11 @@ import {
   resolvePanelAction,
   panelRouteDescriptor
 } from '../../../../src/session/session-panel-host'
+import {
+  BULK_TAB_CLOSE_ACTIONS,
+  selectBulkCloseTabs,
+  type BulkTabCloseMode
+} from '../../../../src/session/mobile-tab-close-selection'
 import { useMobilePrBranchContext } from '../../../../src/session/use-mobile-pr-branch-context'
 import { SessionDockColumn } from '../../../../src/session/SessionDockColumn'
 import type { ConnectionState, RpcFailure, RpcSuccess } from '../../../../src/transport/types'
@@ -4167,6 +4172,44 @@ export default function SessionScreen() {
     }
   }
 
+  const selectClosableSessionTabs = (anchorTabId: string, mode: BulkTabCloseMode) =>
+    selectBulkCloseTabs(sessionTabsRef.current, anchorTabId, mode).filter((candidate) => {
+      if (candidate.type !== 'markdown') {
+        return true
+      }
+      // Why: the tab list's isDirty can lag behind a phone draft; the local
+      // markdown doc state is the authority on unsaved edits.
+      const doc = markdownDocs.get(candidate.id)
+      return !(doc?.status === 'ready' && doc.isDirty)
+    })
+
+  async function handleBulkCloseSessionTabs(anchor: MobileSessionTab, mode: BulkTabCloseMode) {
+    const targets = selectClosableSessionTabs(anchor.id, mode)
+    const activeWasTargeted = targets.some(
+      (candidate) => candidate.id === activeSessionTabIdRef.current
+    )
+    for (const target of targets) {
+      await handleCloseSessionTab(target)
+    }
+    if (activeWasTargeted) {
+      switchSessionTab(anchor)
+    }
+  }
+
+  const bulkCloseSheetActions = (anchor: MobileSessionTab | null, dismiss: () => void) =>
+    anchor === null
+      ? []
+      : BULK_TAB_CLOSE_ACTIONS.filter(
+          ({ mode }) => selectClosableSessionTabs(anchor.id, mode).length > 0
+        ).map(({ mode, label }) => ({
+          label,
+          destructive: true,
+          onPress: () => {
+            dismiss()
+            void handleBulkCloseSessionTabs(anchor, mode)
+          }
+        }))
+
   const isPhoneMode = (handle: string | null): boolean => {
     if (!handle) {
       return false
@@ -5207,7 +5250,16 @@ export default function SessionScreen() {
                 void handleCloseTerminal(target)
               }
             }
-          }
+          },
+          ...bulkCloseSheetActions(
+            actionTarget
+              ? (sessionTabs.find(
+                  (candidate) =>
+                    candidate.type === 'terminal' && candidate.terminal === actionTarget.handle
+                ) ?? null)
+              : null,
+            () => setActionTarget(null)
+          )
         ]}
         onClose={() => setActionTarget(null)}
       />
@@ -5248,7 +5300,8 @@ export default function SessionScreen() {
                 void handleCloseSessionTab(target)
               }
             }
-          }
+          },
+          ...bulkCloseSheetActions(markdownActionTarget, () => setMarkdownActionTarget(null))
         ]}
         onClose={() => setMarkdownActionTarget(null)}
       />
@@ -5277,7 +5330,8 @@ export default function SessionScreen() {
                 void handleCloseSessionTab(target)
               }
             }
-          }
+          },
+          ...bulkCloseSheetActions(fileActionTarget, () => setFileActionTarget(null))
         ]}
         onClose={() => setFileActionTarget(null)}
       />
@@ -5336,7 +5390,8 @@ export default function SessionScreen() {
                 void handleCloseSessionTab(target)
               }
             }
-          }
+          },
+          ...bulkCloseSheetActions(browserActionTarget, () => setBrowserActionTarget(null))
         ]}
         onClose={() => setBrowserActionTarget(null)}
       />

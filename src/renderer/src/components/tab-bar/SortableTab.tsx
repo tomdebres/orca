@@ -33,6 +33,7 @@ type SortableTabProps = {
   groupId: string
   tabCount: number
   hasTabsToRight: boolean
+  hasTabsToLeft: boolean
   isActive: boolean
   isPinned: boolean
   isExpanded: boolean
@@ -40,6 +41,7 @@ type SortableTabProps = {
   onClose: (tabId: string) => void
   onCloseOthers: (tabId: string) => void
   onCloseToRight: (tabId: string) => void
+  onCloseToLeft: (tabId: string) => void
   onSetCustomTitle: (tabId: string, title: string | null) => void
   onSetTabColor: (tabId: string, color: string | null) => void
   onTogglePin: () => void
@@ -64,6 +66,7 @@ export default function SortableTab({
   groupId,
   tabCount,
   hasTabsToRight,
+  hasTabsToLeft,
   isActive,
   isPinned,
   isExpanded,
@@ -71,6 +74,7 @@ export default function SortableTab({
   onClose,
   onCloseOthers,
   onCloseToRight,
+  onCloseToLeft,
   onSetCustomTitle,
   onSetTabColor,
   onTogglePin,
@@ -494,12 +498,14 @@ export default function SortableTab({
         point={menuPoint}
         tabCount={tabCount}
         hasTabsToRight={hasTabsToRight}
+        hasTabsToLeft={hasTabsToLeft}
         isPinned={isPinned}
         onOpenChange={setMenuOpen}
         onActivate={onActivate}
         onClose={onClose}
         onCloseOthers={onCloseOthers}
         onCloseToRight={onCloseToRight}
+        onCloseToLeft={onCloseToLeft}
         onRenameOpen={handleRenameOpen}
         onSetTabColor={onSetTabColor}
         onTogglePin={onTogglePin}
