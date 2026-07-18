@@ -72,6 +72,7 @@ import {
   shouldShowSessionHeaderChecksAction,
   panelRouteDescriptor
 } from '../../../../src/session/session-panel-host'
+import { createBulkCloseSheetActions } from '../../../../src/session/mobile-bulk-close-sheet-actions'
 import { useMobilePrBranchContext } from '../../../../src/session/use-mobile-pr-branch-context'
 import { isFloatingWorkspaceWorktreeId } from '../../../../src/session/floating-workspace'
 import { SessionDockColumn } from '../../../../src/session/SessionDockColumn'
@@ -4105,7 +4106,10 @@ export default function SessionScreen() {
         setSessionTabs((prev) => prev.filter((candidate) => candidate.id !== tab.id))
         // Why: tombstone the closed tab and rely on the snapshot, not a blind refetch that often re-added the not-yet-closed tab.
         closedTabTombstonesRef.current.set(tab.id, Date.now() + 10_000)
-        if (activeSessionTabId === tab.id) {
+        // Why: bulk close re-activates the anchor before awaiting each close;
+        // the render-synced ref sees that switch while this closure would not,
+        // so comparing against the ref keeps the anchor from being nulled out.
+        if (activeSessionTabIdRef.current === tab.id) {
           activeSessionTabTypeRef.current = null
           setActiveSessionTabId(null)
           activeHandleRef.current = null
@@ -4116,6 +4120,14 @@ export default function SessionScreen() {
       // Close failed — keep the authoritative session snapshot visible.
     }
   }
+
+  const bulkCloseActions = createBulkCloseSheetActions({
+    sessionTabsRef,
+    markdownDocs,
+    activeSessionTabIdRef,
+    switchSessionTab,
+    closeSessionTab: handleCloseSessionTab
+  })
 
   const isPhoneMode = (handle: string | null): boolean => {
     if (!handle) {
@@ -5178,7 +5190,8 @@ export default function SessionScreen() {
           onToggleDisplayMode: (handle) => void toggleDisplayMode(handle),
           onRename: setRenameTarget,
           onClear: (target) => void handleClearTerminal(target),
-          onClose: (target) => void handleCloseTerminal(target)
+          onClose: (target) => void handleCloseTerminal(target),
+          bulkCloseActions
         })}
         onClose={() => setActionTarget(null)}
       />
@@ -5219,7 +5232,8 @@ export default function SessionScreen() {
                 void handleCloseSessionTab(target)
               }
             }
-          }
+          },
+          ...bulkCloseActions(markdownActionTarget?.id, () => setMarkdownActionTarget(null))
         ]}
         onClose={() => setMarkdownActionTarget(null)}
       />
@@ -5248,7 +5262,8 @@ export default function SessionScreen() {
                 void handleCloseSessionTab(target)
               }
             }
-          }
+          },
+          ...bulkCloseActions(fileActionTarget?.id, () => setFileActionTarget(null))
         ]}
         onClose={() => setFileActionTarget(null)}
       />
@@ -5257,6 +5272,7 @@ export default function SessionScreen() {
         onClose={() => setBrowserActionTarget(null)}
         onNavigate={handleBrowserNavigationCommand}
         onCloseTab={handleCloseSessionTab}
+        bulkCloseActions={bulkCloseActions}
       />
       <ActionSheetModal
         visible={leaveDrafts != null}
