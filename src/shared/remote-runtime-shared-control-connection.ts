@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import type WebSocket from 'ws'
 import type { PairingOffer } from './pairing'
 import type { RuntimeRpcResponse } from './runtime-rpc-envelope'
 import type { RemoteRuntimeClientError } from './remote-runtime-client-error'
@@ -8,10 +8,16 @@ import { handleSharedControlTextFrame } from './remote-runtime-shared-control-fr
 import { sendSharedControlEncrypted } from './remote-runtime-shared-control-protocol'
 import {
   isSharedControlReady,
+  isSharedControlSocketGone,
   waitForSharedControlReadyWithTimeout
 } from './remote-runtime-shared-control-ready'
 import { scheduleSharedControlReconnectOrFinish } from './remote-runtime-shared-control-reconnect'
 import { requestSharedControl } from './remote-runtime-shared-control-requests'
+import {
+  SHARED_CONTROL_SESSION_PROBE_INTERVAL_MS,
+  SHARED_CONTROL_SESSION_PROBE_TIMEOUT_MS,
+  SharedControlSessionProbe
+} from './remote-runtime-shared-control-session-probe'
 import { SharedControlReadyStableResetTimer } from './remote-runtime-shared-control-stability'
 import * as sharedControlState from './remote-runtime-shared-control-state'
 import {
@@ -19,11 +25,11 @@ import {
   sendSharedControlSubscription
 } from './remote-runtime-shared-control-send'
 import { closeSharedControlSocket } from './remote-runtime-shared-control-socket-close'
-import type { RemoteRuntimeSocketLivenessOptions } from './remote-runtime-socket-liveness'
 import * as sharedControlSubscriptions from './remote-runtime-shared-control-subscriptions'
 import { startSharedControlSubscription } from './remote-runtime-shared-control-subscription-start'
 import type {
   RemoteRuntimeSharedConnectionDiagnostics,
+  RemoteRuntimeSharedControlConnectionOptions,
   RemoteRuntimeSharedSubscription,
   SharedControlConnectionState,
   SharedControlLogicalSubscription,
@@ -39,6 +45,7 @@ export class RemoteRuntimeSharedControlConnection {
   private socketCleanup: (() => void) | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private readonly readyStableReset: SharedControlReadyStableResetTimer
+  private readonly sessionProbe: SharedControlSessionProbe
   private reconnectAttempt = 0
   private intentionallyClosed = false
   private lastConnectedAt: number | null = null
@@ -51,15 +58,22 @@ export class RemoteRuntimeSharedControlConnection {
 
   constructor(
     private readonly pairing: PairingOffer,
-    private readonly options: {
-      environmentId?: string
-      reconnectStableResetMs?: number
-      liveness?: RemoteRuntimeSocketLivenessOptions
-    } = {}
+    private readonly options: RemoteRuntimeSharedControlConnectionOptions = {}
   ) {
     this.readyStableReset = new SharedControlReadyStableResetTimer(
       options.reconnectStableResetMs ?? 30_000
     )
+    this.sessionProbe = new SharedControlSessionProbe({
+      intervalMs: options.sessionProbeIntervalMs ?? SHARED_CONTROL_SESSION_PROBE_INTERVAL_MS,
+      timeoutMs: options.sessionProbeTimeoutMs ?? SHARED_CONTROL_SESSION_PROBE_TIMEOUT_MS,
+      isIntentionallyClosed: () => this.intentionallyClosed,
+      hasSubscriptions: () => this.subscriptions.size > 0,
+      isReady: () =>
+        isSharedControlReady({ state: this.state, ws: this.ws, sharedKey: this.sharedKey }),
+      getSocket: () => this.ws,
+      probe: (timeoutMs) => this.request('status.get', undefined, timeoutMs),
+      forceClose: (error) => this.handleSocketClosed(error)
+    })
   }
 
   request<TResult>(
@@ -74,7 +88,16 @@ export class RemoteRuntimeSharedControlConnection {
       timeoutMs,
       ensureReady: () => this.ensureReadyWithTimeout(timeoutMs),
       send: (requestId, requestMethod, requestParams) =>
-        this.sendRequest(requestId, requestMethod, requestParams)
+        sendSharedControlRequest({
+          pendingRequests: this.pendingRequests,
+          requestId,
+          deviceToken: this.pairing.deviceToken,
+          method: requestMethod,
+          params: requestParams,
+          send: (payload) => this.sendEncrypted(payload),
+          reject: (id, error) =>
+            sharedControlState.rejectSharedControlPendingRequest(this.pendingRequests, id, error)
+        })
     })
   }
 
@@ -125,11 +148,7 @@ export class RemoteRuntimeSharedControlConnection {
       readyWaiters: this.readyWaiters,
       timeoutMs,
       open: () => {
-        if (
-          !this.ws ||
-          this.ws.readyState === WebSocket.CLOSED ||
-          this.ws.readyState === WebSocket.CLOSING
-        ) {
+        if (isSharedControlSocketGone(this.ws)) {
           this.open()
         }
       }
@@ -188,22 +207,22 @@ export class RemoteRuntimeSharedControlConnection {
       sendEncrypted: (payload) => this.sendEncrypted(payload),
       markReady: () => {
         this.lastConnectedAt = Date.now()
-        this.scheduleReconnectAttemptReset()
+        this.readyStableReset.schedule({
+          getState: () => this.state,
+          getSocket: () => this.ws,
+          reset: () => void (this.reconnectAttempt = 0)
+        })
+        this.sessionProbe.schedule()
       },
-      replaySubscriptions: () => this.replaySubscriptions()
-    })
-  }
-
-  private sendRequest(requestId: string, method: string, params: unknown): void {
-    sendSharedControlRequest({
-      pendingRequests: this.pendingRequests,
-      requestId,
-      deviceToken: this.pairing.deviceToken,
-      method,
-      params,
-      send: (payload) => this.sendEncrypted(payload),
-      reject: (id, error) =>
-        sharedControlState.rejectSharedControlPendingRequest(this.pendingRequests, id, error)
+      replaySubscriptions: () => {
+        sharedControlSubscriptions.replaySharedControlSubscriptions({
+          subscriptions: this.subscriptions,
+          send: (subscription) => this.sendSubscription(subscription),
+          // Why: only reconnects tag replays; first connects stay on the gated path.
+          tagReplayedResponses: this.everReady
+        })
+        this.everReady = true
+      }
     })
   }
 
@@ -216,16 +235,6 @@ export class RemoteRuntimeSharedControlConnection {
     })
   }
 
-  private replaySubscriptions(): void {
-    sharedControlSubscriptions.replaySharedControlSubscriptions({
-      subscriptions: this.subscriptions,
-      send: (subscription) => this.sendSubscription(subscription),
-      // Why: only reconnects tag replays; first connects stay on the gated path.
-      tagReplayedResponses: this.everReady
-    })
-    this.everReady = true
-  }
-
   private closeSubscription(requestId: string): void {
     const subscription = this.subscriptions.get(requestId)
     if (!subscription) {
@@ -234,7 +243,13 @@ export class RemoteRuntimeSharedControlConnection {
     sharedControlSubscriptions.closeSharedControlLogicalSubscription({
       subscriptions: this.subscriptions,
       subscription,
-      request: (method, params) => this.sendSubscriptionCleanupRequest(method, params)
+      request: (method, params) =>
+        sharedControlSubscriptions.sendSharedControlCleanupRequest({
+          deviceToken: this.pairing.deviceToken,
+          method,
+          params,
+          send: (payload) => this.sendEncrypted(payload)
+        })
     })
   }
 
@@ -244,15 +259,6 @@ export class RemoteRuntimeSharedControlConnection {
       ws: this.ws,
       sharedKey: this.sharedKey,
       payload
-    })
-  }
-
-  private sendSubscriptionCleanupRequest(method: string, params: unknown): void {
-    sharedControlSubscriptions.sendSharedControlCleanupRequest({
-      deviceToken: this.pairing.deviceToken,
-      method,
-      params,
-      send: (payload) => this.sendEncrypted(payload)
     })
   }
 
@@ -279,6 +285,7 @@ export class RemoteRuntimeSharedControlConnection {
       error,
       clearReadyStableTimer: () => this.readyStableReset.clear()
     })
+    this.sessionProbe.clear()
     this.ws = null
     this.sharedKey = null
     this.socketCleanup = null
@@ -306,15 +313,5 @@ export class RemoteRuntimeSharedControlConnection {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
-  }
-
-  private scheduleReconnectAttemptReset(): void {
-    this.readyStableReset.schedule({
-      getState: () => this.state,
-      getSocket: () => this.ws,
-      reset: () => {
-        this.reconnectAttempt = 0
-      }
-    })
   }
 }

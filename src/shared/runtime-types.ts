@@ -71,6 +71,10 @@ export type RuntimeStatus = {
   runtimeProtocolVersion?: number
   minCompatibleRuntimeClientVersion?: number
   capabilities?: RuntimeCapability[]
+  // Why: lets clients warn on non-blocking app-version skew (client updated
+  // ahead of a headless server or vice versa). Absence means the server
+  // predates version reporting and is treated as older.
+  appVersion?: string | null
   remoteControl?: RemoteRuntimeSharedConnectionDiagnostics | null
   hostPlatform?: NodeJS.Platform
   terminalWindowsShell?: string | null

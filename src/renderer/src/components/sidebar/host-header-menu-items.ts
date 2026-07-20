@@ -1,3 +1,4 @@
+import type { AppVersionSkew } from '../../../../shared/app-version-skew'
 import type { ExecutionHostKind } from '../../../../shared/execution-host'
 import type { ExecutionHostHealth } from '../../../../shared/execution-host-registry'
 import type { RuntimeCompatVerdict } from '../../../../shared/protocol-compat'
@@ -23,6 +24,8 @@ export type HostHeaderMenuModel = {
   blocked: {
     reason: 'client-too-old' | 'server-too-old'
   } | null
+  /** Present when versions skew without blocking; blocked wins when both apply. */
+  versionSkew: AppVersionSkew | null
 }
 
 export type HostHeaderMenuInput = {
@@ -31,6 +34,7 @@ export type HostHeaderMenuInput = {
   /** SSH connection status drives Reconnect vs Disconnect. */
   sshConnected?: boolean
   compatibility?: RuntimeCompatVerdict
+  versionSkew?: AppVersionSkew | null
 }
 
 function sshActions(connected: boolean): HostHeaderMenuAction[] {
@@ -69,5 +73,5 @@ export function buildHostHeaderMenuModel(input: HostHeaderMenuInput): HostHeader
       ? { reason: input.compatibility.reason }
       : null
 
-  return { actions, blocked }
+  return { actions, blocked, versionSkew: blocked ? null : (input.versionSkew ?? null) }
 }

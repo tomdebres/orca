@@ -4399,7 +4399,9 @@
           "groupDeleteFailedDesc": "Something went wrong while deleting the group. No projects were removed.",
           "failedNestWorkspace": "Failed to nest workspace",
           "sidebarRowMissing": "Target no longer exists",
-          "failedUnnestWorkspace": "Failed to unnest workspace"
+          "failedUnnestWorkspace": "Failed to unnest workspace",
+          "hostServerOutdated": "Server outdated",
+          "hostAppOutdated": "App outdated"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "Cancel",
@@ -4652,7 +4654,9 @@
           "59b553e2aa": "Disconnect",
           "2d3e4f5a6b": "Check connection",
           "3c4d5e6f7a": "Manage host…",
-          "6e7f8a9b0c": "Remove host…"
+          "6e7f8a9b0c": "Remove host…",
+          "skewUpdateServer": "Server update recommended",
+          "skewUpdateApp": "App update recommended"
         },
         "LinearAgentSkillSetupPrompt": {
           "missingCliAndSkill": "Orca CLI and Linear agent skill are missing.",

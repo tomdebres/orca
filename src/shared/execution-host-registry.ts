@@ -9,6 +9,7 @@ import {
   type ExecutionHostId,
   type ExecutionHostKind
 } from './execution-host'
+import type { AppVersionSkew } from './app-version-skew'
 import { evaluateRuntimeCompat, type RuntimeCompatVerdict } from './protocol-compat'
 import { MIN_COMPATIBLE_RUNTIME_SERVER_VERSION, RUNTIME_PROTOCOL_VERSION } from './protocol-version'
 import type { RuntimeStatus } from './runtime-types'
@@ -32,6 +33,9 @@ export type ExecutionHostRegistryEntry = {
   health: ExecutionHostHealth
   connectionStatus?: SshConnectionStatus
   compatibility?: RuntimeCompatVerdict
+  // Why: non-blocking app-version skew rides alongside the blocking protocol
+  // verdict so host UI can warn without cutting the connection.
+  versionSkew?: AppVersionSkew | null
   capabilities?: readonly string[]
   appVersion?: string | null
   protocolVersion?: number | null
@@ -50,6 +54,7 @@ type RuntimeEnvironmentSummary = {
 type RuntimeHostStatus = {
   status?: RuntimeStatus | null
   appVersion?: string | null
+  versionSkew?: AppVersionSkew | null
 }
 
 type RuntimeStatusByEnvironmentId = ReadonlyMap<string, RuntimeHostStatus>
@@ -163,6 +168,7 @@ function addRuntimeHost(
     detail: 'Orca server',
     health: controlHealth ?? runtimeHealth(status, compatibility),
     compatibility: compatibility ?? undefined,
+    versionSkew: status ? (runtimeStatus?.versionSkew ?? null) : null,
     capabilities: status?.capabilities,
     appVersion: runtimeStatus?.appVersion ?? null,
     protocolVersion: status?.runtimeProtocolVersion ?? status?.protocolVersion ?? null,

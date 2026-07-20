@@ -4334,7 +4334,9 @@
           "hostDisconnected": "已断开连接",
           "failedNestWorkspace": "无法嵌套工作区",
           "sidebarRowMissing": "目标不再存在",
-          "failedUnnestWorkspace": "展开工作区失败"
+          "failedUnnestWorkspace": "展开工作区失败",
+          "hostServerOutdated": "Server outdated",
+          "hostAppOutdated": "App outdated"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "取消",
@@ -4682,7 +4684,9 @@
           "59b553e2aa": "断开连接",
           "2d3e4f5a6b": "检查连接",
           "3c4d5e6f7a": "管理主机…",
-          "6e7f8a9b0c": "删除主机..."
+          "6e7f8a9b0c": "删除主机...",
+          "skewUpdateServer": "Server update recommended",
+          "skewUpdateApp": "App update recommended"
         },
         "WorkspaceKanbanDrawer": {
           "1975a4e480": "任务状态同步失败",

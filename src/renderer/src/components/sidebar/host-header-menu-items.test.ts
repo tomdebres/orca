@@ -89,4 +89,40 @@ describe('buildHostHeaderMenuModel', () => {
     })
     expect(model.blocked).toBeNull()
   })
+
+  it('surfaces non-blocking version skew for a usable runtime host', () => {
+    const model = buildHostHeaderMenuModel({
+      kind: 'runtime',
+      health: 'available',
+      compatibility: { kind: 'ok', clientProtocolVersion: 5, serverProtocolVersion: 5 },
+      versionSkew: {
+        direction: 'server-older',
+        clientAppVersion: '1.4.147',
+        serverAppVersion: '1.4.146'
+      }
+    })
+    expect(model.blocked).toBeNull()
+    expect(model.versionSkew).toMatchObject({ direction: 'server-older' })
+  })
+
+  it('lets a blocking verdict win over version skew', () => {
+    const model = buildHostHeaderMenuModel({
+      kind: 'runtime',
+      health: 'blocked',
+      compatibility: {
+        kind: 'blocked',
+        reason: 'server-too-old',
+        clientProtocolVersion: 5,
+        serverProtocolVersion: 1,
+        requiredServerProtocolVersion: 4
+      },
+      versionSkew: {
+        direction: 'server-older',
+        clientAppVersion: '1.4.147',
+        serverAppVersion: '1.4.146'
+      }
+    })
+    expect(model.blocked).toEqual({ reason: 'server-too-old' })
+    expect(model.versionSkew).toBeNull()
+  })
 })

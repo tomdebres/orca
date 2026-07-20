@@ -143,6 +143,44 @@ describe('execution host registry', () => {
     ])
   })
 
+  it('passes non-blocking version skew through to runtime host entries', () => {
+    const status = {
+      runtimeId: 'runtime-builder',
+      rendererGraphEpoch: 1,
+      graphStatus: 'ready' as const,
+      authoritativeWindowId: 1,
+      liveTabCount: 0,
+      liveLeafCount: 0,
+      runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
+      minCompatibleRuntimeClientVersion: 1
+    }
+    const versionSkew = {
+      direction: 'server-older' as const,
+      clientAppVersion: '1.4.147',
+      serverAppVersion: '1.4.146'
+    }
+    const hosts = buildExecutionHostRegistry({
+      repos: [],
+      settings: { activeRuntimeEnvironmentId: null },
+      runtimeEnvironments: [
+        { id: 'builder', name: 'Linux Builder' },
+        { id: 'offline', name: 'Offline' }
+      ],
+      runtimeStatusByEnvironmentId: new Map([
+        ['builder', { status, appVersion: '1.4.146', versionSkew }],
+        // Why: skew must not survive an unreachable probe; a stale verdict on a
+        // disconnected host would warn about a server we can no longer see.
+        ['offline', { status: null, versionSkew }]
+      ])
+    })
+
+    expect(hosts).toMatchObject([
+      { id: 'local', health: 'local' },
+      { id: 'runtime:builder', health: 'available', versionSkew },
+      { id: 'runtime:offline', health: 'disconnected', versionSkew: null }
+    ])
+  })
+
   it('uses shared-control diagnostics to show reconnecting runtime host health', () => {
     const hosts = buildExecutionHostRegistry({
       repos: [],
