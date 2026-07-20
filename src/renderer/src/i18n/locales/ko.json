@@ -4386,7 +4386,9 @@
           "hostDisconnected": "연결 끊김",
           "failedNestWorkspace": "워크스페이스를 중첩하지 못했습니다",
           "sidebarRowMissing": "대상이 더 이상 존재하지 않습니다",
-          "failedUnnestWorkspace": "워크트리 펼치기 실패"
+          "failedUnnestWorkspace": "워크트리 펼치기 실패",
+          "hostServerOutdated": "Server outdated",
+          "hostAppOutdated": "App outdated"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "취소",
@@ -4756,7 +4758,9 @@
           "59b553e2aa": "연결 해제",
           "2d3e4f5a6b": "연결 확인",
           "3c4d5e6f7a": "호스트 관리…",
-          "6e7f8a9b0c": "호스트 제거…"
+          "6e7f8a9b0c": "호스트 제거…",
+          "skewUpdateServer": "Server update recommended",
+          "skewUpdateApp": "App update recommended"
         },
         "WorkspaceKanbanDrawer": {
           "1975a4e480": "작업 상태 동기화 실패",

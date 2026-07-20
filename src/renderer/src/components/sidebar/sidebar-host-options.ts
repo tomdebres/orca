@@ -8,6 +8,7 @@ import {
   buildExecutionHostRegistry,
   type ExecutionHostHealth
 } from '../../../../shared/execution-host-registry'
+import type { AppVersionSkew } from '../../../../shared/app-version-skew'
 import type { RuntimeCompatVerdict } from '../../../../shared/protocol-compat'
 import type { SshConnectionState, SshConnectionStatus } from '../../../../shared/ssh-types'
 import type { RuntimeStatus } from '../../../../shared/runtime-types'
@@ -23,6 +24,7 @@ export type SidebarHostOption = {
   presence: 'local' | 'configured' | 'project' | 'active'
   // Why: surfaced to the sidebar host-header menu so it can warn on version skew.
   compatibility?: RuntimeCompatVerdict
+  versionSkew?: AppVersionSkew | null
   // Why: lets host headers spell out auth-needed SSH states, not just an icon.
   connectionStatus?: SshConnectionStatus
 }
@@ -43,7 +45,11 @@ export function buildSidebarHostOptions(args: {
   // verdicts and blocked health in the sidebar without re-probing servers.
   runtimeStatusByEnvironmentId?: ReadonlyMap<
     string,
-    { status?: RuntimeStatus | null; appVersion?: string | null }
+    {
+      status?: RuntimeStatus | null
+      appVersion?: string | null
+      versionSkew?: AppVersionSkew | null
+    }
   >
   runtimeEnvironments?: readonly Pick<PublicKnownRuntimeEnvironment, 'id' | 'name'>[]
   // Why: per-host display-label overrides rename hosts everywhere the sidebar

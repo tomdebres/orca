@@ -4405,7 +4405,9 @@
           "hostDisconnected": "Desconectado",
           "failedNestWorkspace": "No se pudo anidar el espacio de trabajo",
           "sidebarRowMissing": "El destino ya no existe",
-          "failedUnnestWorkspace": "Error al expandir el espacio de trabajo"
+          "failedUnnestWorkspace": "Error al expandir el espacio de trabajo",
+          "hostServerOutdated": "Server outdated",
+          "hostAppOutdated": "App outdated"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "Cancelar",
@@ -4756,7 +4758,9 @@
           "59b553e2aa": "Desconectar",
           "2d3e4f5a6b": "Verificar conexión",
           "3c4d5e6f7a": "Administrar host…",
-          "6e7f8a9b0c": "Quitar host…"
+          "6e7f8a9b0c": "Quitar host…",
+          "skewUpdateServer": "Server update recommended",
+          "skewUpdateApp": "App update recommended"
         },
         "WorkspaceKanbanDrawer": {
           "1975a4e480": "Falló la sincronización del estado de la tarea",

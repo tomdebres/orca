@@ -54,6 +54,7 @@ import {
 } from './runtime-environments-search'
 import { unwrapRuntimeRpcResult } from '@/runtime/runtime-rpc-client'
 import { useAppStore } from '@/store'
+import { buildRuntimeEnvironmentStatusEntry } from '@/store/slices/runtime-status'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { getUpdateCheckClickOptions, getUpdateCheckHint } from '@/lib/update-check-click-options'
@@ -347,10 +348,12 @@ export function RuntimeEnvironmentsPane({
             const runtimeStatus = unwrapRuntimeRpcResult<RuntimeStatus>(response)
             // Why: feed the live status into the store so sidebar host pickers
             // reflect manual refreshes, not just the settings pane.
-            useAppStore.getState().setRuntimeEnvironmentStatus(environment.id, {
-              status: runtimeStatus,
-              checkedAt: Date.now()
-            })
+            useAppStore
+              .getState()
+              .setRuntimeEnvironmentStatus(
+                environment.id,
+                await buildRuntimeEnvironmentStatusEntry(runtimeStatus)
+              )
             if (!mountedRef.current) {
               return
             }
@@ -612,10 +615,12 @@ export function RuntimeEnvironmentsPane({
       const compatibility = evaluateHostDetails(runtimeStatus)
       // Why: row Connect is reachability only. The Advanced selector is the
       // explicit default-host control and should be the only active-server path.
-      useAppStore.getState().setRuntimeEnvironmentStatus(environment.id, {
-        status: runtimeStatus,
-        checkedAt: Date.now()
-      })
+      useAppStore
+        .getState()
+        .setRuntimeEnvironmentStatus(
+          environment.id,
+          await buildRuntimeEnvironmentStatusEntry(runtimeStatus)
+        )
       if (mountedRef.current) {
         setDetailsByEnvironmentId((current) => ({
           ...current,

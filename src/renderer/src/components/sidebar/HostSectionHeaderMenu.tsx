@@ -31,6 +31,8 @@ import {
   unwrapRuntimeRpcResult
 } from '@/runtime/runtime-rpc-client'
 import type { RuntimeStatus } from '../../../../shared/runtime-types'
+import { buildRuntimeEnvironmentStatusEntry } from '@/store/slices/runtime-status'
+import { describeAppVersionSkew } from '../../../../shared/app-version-skew'
 import type { HostHeaderRow } from './host-section-rows'
 import { buildHostHeaderMenuModel } from './host-header-menu-items'
 import { HostRenameDialog } from './HostRenameDialog'
@@ -86,7 +88,8 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
     kind: row.kind,
     health: row.health,
     sshConnected,
-    compatibility: row.compatibility
+    compatibility: row.compatibility,
+    versionSkew: row.versionSkew
   })
   const removalTarget = resolveHostRemoval(row.hostId)
 
@@ -143,10 +146,12 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
       const runtimeStatus = unwrapRuntimeRpcResult<RuntimeStatus>(response)
       // Why: feed the probe result into the shared store so the host header and
       // other host pickers reflect this check without a separate fetch.
-      useAppStore.getState().setRuntimeEnvironmentStatus(parsed.environmentId, {
-        status: runtimeStatus,
-        checkedAt: Date.now()
-      })
+      useAppStore
+        .getState()
+        .setRuntimeEnvironmentStatus(
+          parsed.environmentId,
+          await buildRuntimeEnvironmentStatusEntry(runtimeStatus)
+        )
       toast.success(
         translate(
           'auto.components.sidebar.HostSectionHeaderMenu.7f1a2b3c4d',
@@ -225,6 +230,33 @@ export function HostSectionHeaderMenu({ row }: { row: HostHeaderRow }): React.JS
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={6} className="max-w-72">
                 {row.compatibility ? describeRuntimeCompatBlock(row.compatibility) : null}
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {model.versionSkew && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuItem
+                  className="text-amber-600 focus:text-amber-600 dark:text-amber-400 dark:focus:text-amber-400"
+                  onSelect={() => openManageHost(row)}
+                >
+                  <AlertTriangle className="size-3.5" />
+                  {model.versionSkew.direction === 'server-older'
+                    ? translate(
+                        'auto.components.sidebar.HostSectionHeaderMenu.skewUpdateServer',
+                        'Server update recommended'
+                      )
+                    : translate(
+                        'auto.components.sidebar.HostSectionHeaderMenu.skewUpdateApp',
+                        'App update recommended'
+                      )}
+                </DropdownMenuItem>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={6} className="max-w-72">
+                {describeAppVersionSkew(model.versionSkew)}
               </TooltipContent>
             </Tooltip>
             <DropdownMenuSeparator />

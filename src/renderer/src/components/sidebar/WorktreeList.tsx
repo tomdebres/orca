@@ -760,9 +760,11 @@ function SectionMetricsBadge({ count }: { count: number }): React.JSX.Element {
 }
 
 function HostHeaderHealthIcon({
-  health
+  health,
+  versionSkew
 }: {
   health: HostHeaderRow['health']
+  versionSkew?: HostHeaderRow['versionSkew']
 }): React.JSX.Element | null {
   // Why: only surface states needing attention; healthy is the silent default.
   if (health === 'connecting') {
@@ -771,15 +773,22 @@ function HostHeaderHealthIcon({
   if (health === 'blocked' || health === 'error') {
     return <AlertTriangle className="size-3 shrink-0 text-destructive" />
   }
+  // Why: version skew is non-blocking, so it gets the caution tint rather than
+  // the destructive one reserved for hosts that cannot be used at all.
+  if (versionSkew) {
+    return <AlertTriangle className="size-3 shrink-0 text-amber-500" />
+  }
   return null
 }
 
-function getHostHeaderDetail(row: HostHeaderRow): { text: string; isWarning: boolean } | null {
+function getHostHeaderDetail(
+  row: HostHeaderRow
+): { text: string; tone: 'destructive' | 'caution' | 'muted' } | null {
   // Why: a blocked compatibility verdict earns a compact warning so the host stands out.
   if (row.health === 'blocked') {
     return {
       text: translate('auto.components.sidebar.WorktreeList.7a8b9c0d1e', 'Update required'),
-      isWarning: true
+      tone: 'destructive'
     }
   }
   // Why: auth-failed needs a worded status; the health icon alone doesn't tell the user to re-auth.
@@ -789,18 +798,34 @@ function getHostHeaderDetail(row: HostHeaderRow): { text: string; isWarning: boo
         'auto.components.sidebar.WorktreeList.hostAuthNeeded',
         'Authentication needed'
       ),
-      isWarning: true
+      tone: 'destructive'
     }
   }
   if (row.health === 'disconnected') {
     return {
       text: translate('auto.components.sidebar.WorktreeList.hostDisconnected', 'Disconnected'),
-      isWarning: false
+      tone: 'muted'
     }
+  }
+  // Why: non-blocking app-version skew still works, but warns — a client that
+  // auto-updated ahead of its server hits confusing feature failures otherwise.
+  if (row.versionSkew) {
+    return row.versionSkew.direction === 'server-older'
+      ? {
+          text: translate(
+            'auto.components.sidebar.WorktreeList.hostServerOutdated',
+            'Server outdated'
+          ),
+          tone: 'caution'
+        }
+      : {
+          text: translate('auto.components.sidebar.WorktreeList.hostAppOutdated', 'App outdated'),
+          tone: 'caution'
+        }
   }
   // Why: show the transport detail only for remote hosts; it's noise under the local label.
   if (row.kind !== 'local') {
-    return { text: row.detail, isWarning: false }
+    return { text: row.detail, tone: 'muted' }
   }
   return null
 }
@@ -851,7 +876,7 @@ function HostSectionHeader({
         ) : (
           <Server className="size-3.5 shrink-0 text-muted-foreground" />
         )}
-        <HostHeaderHealthIcon health={row.health} />
+        <HostHeaderHealthIcon health={row.health} versionSkew={row.versionSkew} />
         {/* Why: badge hugs the label (like repo headers) instead of floating by the hover controls. */}
         <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
           <span
@@ -866,7 +891,11 @@ function HostSectionHeader({
             <span
               className={cn(
                 'shrink-0 truncate text-[10px] leading-none',
-                detail.isWarning ? 'text-destructive' : 'text-muted-foreground/70'
+                detail.tone === 'destructive'
+                  ? 'text-destructive'
+                  : detail.tone === 'caution'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-muted-foreground/70'
               )}
             >
               {detail.text}

@@ -4386,7 +4386,9 @@
           "hostDisconnected": "切断済み",
           "failedNestWorkspace": "ワークスペースをネストできませんでした",
           "sidebarRowMissing": "対象はもう存在しません",
-          "failedUnnestWorkspace": "ワークスペースの展開に失敗しました"
+          "failedUnnestWorkspace": "ワークスペースの展開に失敗しました",
+          "hostServerOutdated": "Server outdated",
+          "hostAppOutdated": "App outdated"
         },
         "WorktreeMetaDialog": {
           "3db0a2a593": "キャンセル",
@@ -4756,7 +4758,9 @@
           "59b553e2aa": "切断",
           "2d3e4f5a6b": "Check connection",
           "3c4d5e6f7a": "ホストを管理…",
-          "6e7f8a9b0c": "Remove host…"
+          "6e7f8a9b0c": "Remove host…",
+          "skewUpdateServer": "Server update recommended",
+          "skewUpdateApp": "App update recommended"
         },
         "WorkspaceKanbanDrawer": {
           "1975a4e480": "タスクステータスの同期に失敗しました",
