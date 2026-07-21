@@ -14,6 +14,19 @@ export function RuntimeVersionSkewNudge(): null {
   const shownKeys = useRef(new Map<string, string>())
   const activeToasts = useRef(new Map<string, string | number>())
 
+  // Why: infinite-duration toasts outlive this component; without unmount cleanup they linger as undismissable ghosts (and duplicate under StrictMode remounts).
+  useEffect(() => {
+    const toasts = activeToasts.current
+    const keys = shownKeys.current
+    return () => {
+      for (const id of toasts.values()) {
+        toast.dismiss(id)
+      }
+      toasts.clear()
+      keys.clear()
+    }
+  }, [])
+
   useEffect(() => {
     const retractToast = (environmentId: string): void => {
       const activeId = activeToasts.current.get(environmentId)
