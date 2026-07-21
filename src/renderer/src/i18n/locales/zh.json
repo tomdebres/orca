@@ -4865,7 +4865,9 @@
         "RuntimeVersionSkewNudge": {
           "titleServerOlder": "Orca server \"{{value0}}\" is outdated",
           "titleServerNewer": "Orca server \"{{value0}}\" is newer than this app",
-          "manageServer": "Manage server"
+          "manageServer": "Manage server",
+          "titleServerOlderUnnamed": "An Orca server is outdated",
+          "titleServerNewerUnnamed": "An Orca server is newer than this app"
         }
       },
       "shared": {

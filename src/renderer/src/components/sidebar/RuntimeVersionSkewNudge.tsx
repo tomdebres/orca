@@ -34,20 +34,33 @@ export function RuntimeVersionSkewNudge(): null {
       const { environmentId, skew } = action
       shownKeys.current.set(environmentId, action.key)
       retractToast(environmentId)
-      const name =
-        environments.find((environment) => environment.id === environmentId)?.name ?? environmentId
+      // Why: the name can lag the first probe (pairing races status refresh) or
+      // be unset; a generic title beats surfacing an opaque environment id.
+      const name = environments
+        .find((environment) => environment.id === environmentId)
+        ?.name?.trim()
       const id = toast.warning(
         skew.direction === 'server-older'
-          ? translate(
-              'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerOlder',
-              'Orca server "{{value0}}" is outdated',
-              { value0: name }
-            )
-          : translate(
-              'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerNewer',
-              'Orca server "{{value0}}" is newer than this app',
-              { value0: name }
-            ),
+          ? name
+            ? translate(
+                'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerOlder',
+                'Orca server "{{value0}}" is outdated',
+                { value0: name }
+              )
+            : translate(
+                'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerOlderUnnamed',
+                'An Orca server is outdated'
+              )
+          : name
+            ? translate(
+                'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerNewer',
+                'Orca server "{{value0}}" is newer than this app',
+                { value0: name }
+              )
+            : translate(
+                'auto.components.sidebar.RuntimeVersionSkewNudge.titleServerNewerUnnamed',
+                'An Orca server is newer than this app'
+              ),
         {
           description: describeAppVersionSkew(skew),
           // Why: skew persists until someone updates a machine; an auto-expiring
