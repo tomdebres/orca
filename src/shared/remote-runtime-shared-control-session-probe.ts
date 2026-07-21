@@ -73,7 +73,11 @@ export class SharedControlSessionProbe {
     const probedSocket = this.hooks.getSocket()
     try {
       await this.hooks.probe(this.hooks.timeoutMs)
-      this.schedule()
+      // Why: same stale-socket guard as the failure branch — a reconnect that
+      // replaced the socket mid-probe owns the probe schedule for it.
+      if (this.hooks.getSocket() === probedSocket) {
+        this.schedule()
+      }
     } catch (error) {
       // Why: if the socket already changed, a reconnect handled recovery and
       // scheduled its own probe; force-closing here would kill the new socket.

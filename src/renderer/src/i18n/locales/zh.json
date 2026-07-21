@@ -4861,6 +4861,11 @@
           "cancel": "取消",
           "forget": "从 Orca 中移除",
           "reconnectAndDelete": "重新连接并删除"
+        },
+        "RuntimeVersionSkewNudge": {
+          "titleServerOlder": "Orca server \"{{value0}}\" is outdated",
+          "titleServerNewer": "Orca server \"{{value0}}\" is newer than this app",
+          "manageServer": "Manage server"
         }
       },
       "shared": {

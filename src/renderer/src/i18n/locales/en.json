@@ -4884,6 +4884,11 @@
           "cancel": "Cancel",
           "forget": "Remove from Orca",
           "reconnectAndDelete": "Reconnect & Delete"
+        },
+        "RuntimeVersionSkewNudge": {
+          "titleServerOlder": "Orca server \"{{value0}}\" is outdated",
+          "titleServerNewer": "Orca server \"{{value0}}\" is newer than this app",
+          "manageServer": "Manage server"
         }
       },
       "shared": {

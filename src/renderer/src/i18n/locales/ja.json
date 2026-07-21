@@ -4861,6 +4861,11 @@
           "cancel": "キャンセル",
           "forget": "Orcaから削除",
           "reconnectAndDelete": "再接続して削除"
+        },
+        "RuntimeVersionSkewNudge": {
+          "titleServerOlder": "Orca server \"{{value0}}\" is outdated",
+          "titleServerNewer": "Orca server \"{{value0}}\" is newer than this app",
+          "manageServer": "Manage server"
         }
       },
       "shared": {
