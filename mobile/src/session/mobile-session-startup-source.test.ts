@@ -6,6 +6,12 @@ const source = readFileSync(
   'utf8'
 )
 
+// Why: the capability reset/probe moved out of the route into this hook.
+const capabilitiesHookSource = readFileSync(
+  new URL('./use-host-runtime-capabilities.ts', import.meta.url),
+  'utf8'
+)
+
 function sliceBetween(startPattern: string, endPattern: string): string {
   const start = source.indexOf(startPattern)
   expect(start).toBeGreaterThanOrEqual(0)
@@ -69,24 +75,24 @@ describe('mobile session startup', () => {
   })
 
   it('fails runtime capability gates closed before probing a replacement client', () => {
-    const capabilityEffect = sliceBetween(
-      'const hostQueryReplyInputSupportedRef = useRef(false)',
-      '// Why: read deviceToken from host record'
-    )
-    const probeStart = capabilityEffect.indexOf('startRuntimeCapabilityProbe(client,')
+    const probeStart = capabilitiesHookSource.indexOf('startRuntimeCapabilityProbe(client,')
 
     expect(probeStart).toBeGreaterThanOrEqual(0)
     for (const reset of [
       'setBrowserScreencastSupported(null)',
       'setAgentSessionHistorySupported(null)',
+      'setFileAttachmentsSupported(false)',
       'setQuickCommandsSupported(null)',
-      'setShowQuickCommands(false)',
       'hostQueryReplyInputSupportedRef.current = false'
     ]) {
-      const resetIndex = capabilityEffect.lastIndexOf(reset)
+      const resetIndex = capabilitiesHookSource.lastIndexOf(reset)
       expect(resetIndex).toBeGreaterThanOrEqual(0)
       expect(resetIndex).toBeLessThan(probeStart)
     }
+    // Why: the sheet-close gate stayed in the route; a capability reset to null must close it.
+    expect(source).toContain(
+      'if (quickCommandsSupported !== true) {\n      setShowQuickCommands(false)'
+    )
   })
 
   it('activates an already-selected pending terminal tab after hydration', () => {
