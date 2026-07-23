@@ -71,3 +71,26 @@ export function createBulkCloseSheetActions(deps: BulkCloseSheetDeps) {
     }))
   }
 }
+
+/**
+ * Builds the destructive Close entry followed by the bulk-close entries, so
+ * per-tab-type sheets in the session route stay at one spread per call site.
+ */
+export function createCloseWithBulkActions(
+  closeSessionTab: (tab: MobileSessionTab) => Promise<void>,
+  bulkActions: ReturnType<typeof createBulkCloseSheetActions>
+) {
+  return (target: MobileSessionTab | null, dismiss: () => void): ActionSheetAction[] => [
+    {
+      label: 'Close',
+      destructive: true,
+      onPress: () => {
+        dismiss()
+        if (target) {
+          void closeSessionTab(target)
+        }
+      }
+    },
+    ...bulkActions(target?.id, dismiss)
+  ]
+}

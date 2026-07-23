@@ -72,7 +72,10 @@ import {
   shouldShowSessionHeaderChecksAction,
   panelRouteDescriptor
 } from '../../../../src/session/session-panel-host'
-import { createBulkCloseSheetActions } from '../../../../src/session/mobile-bulk-close-sheet-actions'
+import {
+  createBulkCloseSheetActions,
+  createCloseWithBulkActions
+} from '../../../../src/session/mobile-bulk-close-sheet-actions'
 import { useMobilePrBranchContext } from '../../../../src/session/use-mobile-pr-branch-context'
 import { isFloatingWorkspaceWorktreeId } from '../../../../src/session/floating-workspace'
 import { SessionDockColumn } from '../../../../src/session/SessionDockColumn'
@@ -4128,6 +4131,7 @@ export default function SessionScreen() {
     switchSessionTab,
     closeSessionTab: handleCloseSessionTab
   })
+  const closeWithBulkActions = createCloseWithBulkActions(handleCloseSessionTab, bulkCloseActions)
 
   const isPhoneMode = (handle: string | null): boolean => {
     if (!handle) {
@@ -5222,18 +5226,7 @@ export default function SessionScreen() {
               }
             }
           },
-          {
-            label: 'Close',
-            destructive: true,
-            onPress: () => {
-              const target = markdownActionTarget
-              setMarkdownActionTarget(null)
-              if (target) {
-                void handleCloseSessionTab(target)
-              }
-            }
-          },
-          ...bulkCloseActions(markdownActionTarget?.id, () => setMarkdownActionTarget(null))
+          ...closeWithBulkActions(markdownActionTarget, () => setMarkdownActionTarget(null))
         ]}
         onClose={() => setMarkdownActionTarget(null)}
       />
@@ -5252,18 +5245,7 @@ export default function SessionScreen() {
               }
             }
           },
-          {
-            label: 'Close',
-            destructive: true,
-            onPress: () => {
-              const target = fileActionTarget
-              setFileActionTarget(null)
-              if (target) {
-                void handleCloseSessionTab(target)
-              }
-            }
-          },
-          ...bulkCloseActions(fileActionTarget?.id, () => setFileActionTarget(null))
+          ...closeWithBulkActions(fileActionTarget, () => setFileActionTarget(null))
         ]}
         onClose={() => setFileActionTarget(null)}
       />
