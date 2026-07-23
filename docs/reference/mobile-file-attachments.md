@@ -58,9 +58,9 @@ clipboard *paste* path only — picker attachments already fail fast with a
 
 ### 2. Mobile pipeline
 
-- The picker returns `{ base64, fileName }` instead of bare `{ base64 }`;
-  `expo-document-picker` already supplies `name`. (`mimeType` is available but
-  unused — not captured, YAGNI.)
+- The picker returns `{ base64, fileName?: string }` instead of bare
+  `{ base64 }`; `expo-document-picker` already supplies `name`. (`mimeType` is
+  available but unused — not captured, YAGNI.)
   Photo-library picks return no `fileName` (they are unnamed pastes today).
   Both sources keep today's fail-fast behavior when over the upload budget —
   no picker-path downscaling exists or is added.
@@ -80,6 +80,10 @@ clipboard *paste* path only — picker attachments already fail fast with a
 - `clipboard.startImageUpload` and `clipboard.saveImageAsTempFile` params gain
   one optional field: `fileName: string`. Method names stay — renaming breaks
   compatibility; a comment marks them as the generic blob-to-temp-file channel.
+- In the chunked flow, `fileName` travels only on `clipboard.startImageUpload`:
+  the host stores it in the upload session, `clipboard.appendImageUploadChunk`
+  and `clipboard.commitImageUpload` keep their params unchanged (`uploadId`
+  only), and commit reads the session's stored name when writing the file.
 - On commit, when `fileName` is present the host writes
   `orca-file-<ts>-<uuid>-<sanitized-name>`; when absent, today's
   `orca-paste-<ts>-<uuid>.png` (byte-identical behavior for existing callers).
