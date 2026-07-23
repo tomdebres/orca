@@ -1,11 +1,20 @@
 import type { RuntimeRpcResponse } from './runtime-rpc-envelope'
 import type { RemoteRuntimeClientError } from './remote-runtime-client-error'
+import type { RemoteRuntimeSocketLivenessOptions } from './remote-runtime-socket-liveness'
 
 export type SharedControlConnectionState =
   | 'closed'
   | 'awaiting_ready'
   | 'awaiting_authenticated'
   | 'ready'
+
+export type RemoteRuntimeSharedControlConnectionOptions = {
+  environmentId?: string
+  reconnectStableResetMs?: number
+  liveness?: RemoteRuntimeSocketLivenessOptions
+  sessionProbeIntervalMs?: number
+  sessionProbeTimeoutMs?: number
+}
 
 export type SharedControlPendingRequest<TResult> = {
   method: string
