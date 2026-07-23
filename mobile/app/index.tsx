@@ -919,6 +919,7 @@ export default function HomeScreen() {
                           }
                           const sessionBar = getUsageBarState(limits, 'session')
                           const weeklyBar = getUsageBarState(limits, 'weekly')
+                          const fableBar = getUsageBarState(limits, 'fableWeekly')
                           return (
                             <View key={provider} style={styles.accountsRow}>
                               <View style={styles.accountsIcon}>
@@ -945,6 +946,14 @@ export default function HomeScreen() {
                                     unavailable={weeklyBar.unavailable}
                                     loading={weeklyBar.loading}
                                   />
+                                  {limits?.fableWeekly != null ? (
+                                    <UsageBar
+                                      label="Fable"
+                                      usedPercent={fableBar.usedPercent}
+                                      unavailable={fableBar.unavailable}
+                                      loading={fableBar.loading}
+                                    />
+                                  ) : null}
                                 </View>
                               </View>
                             </View>

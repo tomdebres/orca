@@ -18,12 +18,16 @@ export type ProviderRateLimits = {
   provider: 'claude' | 'codex' | 'gemini' | 'opencode-go' | 'kimi'
   session: RateLimitWindow | null
   weekly: RateLimitWindow | null
+  /** Claude Fable 7-day weekly window, null if not available. */
+  fableWeekly?: RateLimitWindow | null
   monthly?: RateLimitWindow | null
   buckets?: Array<RateLimitWindow & { name: string }>
   updatedAt: number
   error: string | null
   status: 'idle' | 'fetching' | 'ok' | 'error' | 'unavailable'
 }
+
+export type UsageWindowKey = 'session' | 'weekly' | 'fableWeekly'
 
 export type InactiveAccountUsage = {
   accountId: string
@@ -94,6 +98,7 @@ export function hasActiveProviderUsage(limits: ProviderRateLimits | null): boole
   if (
     limits.session != null ||
     limits.weekly != null ||
+    limits.fableWeekly != null ||
     limits.monthly != null ||
     (limits.buckets && limits.buckets.length > 0)
   ) {
@@ -106,7 +111,7 @@ export function hasActiveProviderUsage(limits: ProviderRateLimits | null): boole
 // is per window rather than per provider status.
 export function getUsageBarState(
   limits: ProviderRateLimits | null,
-  windowKey: 'session' | 'weekly',
+  windowKey: UsageWindowKey,
   isFetchingOverride?: boolean
 ): UsageBarState {
   const window = limits?.[windowKey] ?? null
@@ -130,7 +135,7 @@ export function getUsageBarState(
  */
 export function getWindowResetLabel(
   limits: ProviderRateLimits | null,
-  windowKey: 'session' | 'weekly',
+  windowKey: UsageWindowKey,
   now: number
 ): string | null {
   const resetsAt = limits?.[windowKey]?.resetsAt
